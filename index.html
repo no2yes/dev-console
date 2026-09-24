@@ -35,6 +35,7 @@
 
   <div id="list"></div>
   <div id="empty">불러오는 중...</div>
+  <button type="button" id="loadMoreBtn" style="display:none; width:100%; padding:12px; margin-top:8px; border-radius:10px; border:1px solid #ccc; background:#fff; font-size:14px; color:#555; cursor:pointer; font-family:inherit; -webkit-appearance:none; appearance:none;">더 보기</button>
 
   <script>
     // ▼▼ 개발자콘솔 GAS 웹 앱의 실제 exec 주소로 바꿔주세요 ▼▼
@@ -188,34 +189,55 @@
       });
     }
 
-    // 목록 불러오기를 함수로 분리해서, 실패했을 때 재시도할 수 있게 합니다.
-    // attempt: 지금이 몇 번째 시도인지 (1부터 시작, 최대 3번까지 시도합니다)
-    function loadFeedbackList(attempt) {
-      fetch(GAS_URL + '?action=list')
+    var currentPage = 1;
+    var hasMorePages = false;
+    var loadMoreBtn = document.getElementById('loadMoreBtn');
+
+    // page: 몇 번째 페이지를 불러올지. attempt: 이 페이지를 몇 번째로
+    // 시도하는 중인지(실패 시 최대 3번 자동 재시도).
+    function loadFeedbackList(page, attempt) {
+      if (page > 1) loadMoreBtn.textContent = '불러오는 중...';
+      loadMoreBtn.disabled = true;
+
+      fetch(GAS_URL + '?action=list&page=' + page + '&pageSize=10')
         .then(function (res) { return res.json(); })
         .then(function (data) {
-          allFeedback = data || [];
+          if (page === 1) {
+            allFeedback = data.items || [];
+          } else {
+            allFeedback = allFeedback.concat(data.items || []);
+          }
+          hasMorePages = !!data.hasMore;
+          currentPage = page;
+
           renderFilterBar();
           render();
+
+          loadMoreBtn.disabled = false;
+          loadMoreBtn.textContent = '더 보기';
+          loadMoreBtn.style.display = hasMorePages ? 'block' : 'none';
         })
         .catch(function () {
-          // 구글 Apps Script는 가끔 응답 중계 단계에서 일시적으로 실패하는
-          // 경우가 있어서(저희 데이터나 코드 문제가 아닙니다), 최대 3번까지
-          // 자동으로 다시 시도합니다.
           if (attempt < 3) {
             document.getElementById('empty').textContent =
               '불러오는 중... (재시도 ' + attempt + '/3)';
             setTimeout(function () {
-              loadFeedbackList(attempt + 1);
+              loadFeedbackList(page, attempt + 1);
             }, 800);
           } else {
             document.getElementById('empty').textContent =
               '데이터를 불러오지 못했습니다. 새로고침해 주세요.';
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.textContent = '더 보기';
           }
         });
     }
 
-    loadFeedbackList(1);
+    loadMoreBtn.addEventListener('click', function () {
+      loadFeedbackList(currentPage + 1, 1);
+    });
+
+    loadFeedbackList(1, 1);
   </script>
 </body>
 </html>
