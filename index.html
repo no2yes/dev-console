@@ -9,13 +9,17 @@
   h1 { font-size: 18px; margin: 0 0 16px; }
 
   /* 프로젝트별 필터 버튼들 */
-  #filterBar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  /* 필터 버튼 줄과 선택삭제 도구모음을 한 줄에 나란히 배치하는 바깥 껍데기입니다.
+     양 끝으로 벌려서, 선택삭제 도구모음이 나타나도 다른 내용이 아래로
+     밀리지 않고 같은 줄 오른쪽에 얹히게 합니다. */
+  #toolbarRow { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  #filterBar { display: flex; gap: 8px; flex-wrap: wrap; }
 
   /* 선택 삭제 도구모음: 1개 이상 체크됐을 때만 나타납니다 */
   #selectionBar {
-    display: none; align-items: center; justify-content: space-between;
+    display: none; align-items: center; gap: 10px;
     background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 10px;
-    padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: #991B1B;
+    padding: 6px 10px; font-size: 13px; color: #991B1B;
   }
   #deleteSelectedBtn {
     padding: 6px 14px; border-radius: 8px; border: none; background: #DC2626;
@@ -90,12 +94,15 @@
     <div class="loading-text">피드백을 불러오고 있어요...</div>
   </div>
 
-  <div id="filterBar"></div>
+  <div id="toolbarRow">
+    <div id="filterBar"></div>
 
-  <!-- 체크박스를 하나라도 선택하면 나타나는 삭제 도구모음 -->
-  <div id="selectionBar">
-    <span id="selectionCount">0개 선택됨</span>
-    <button type="button" id="deleteSelectedBtn">선택 삭제</button>
+    <!-- 체크박스를 하나라도 선택하면 나타나는 삭제 도구모음. 필터 버튼과
+         같은 줄(toolbarRow) 안에 있어서, 나타나도 아래 목록이 밀리지 않습니다. -->
+    <div id="selectionBar">
+      <span id="selectionCount">0개 선택됨</span>
+      <button type="button" id="deleteSelectedBtn">선택 삭제</button>
+    </div>
   </div>
 
   <div id="list"></div>
