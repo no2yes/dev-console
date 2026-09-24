@@ -373,7 +373,10 @@
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'filter-btn' + (p === currentFilter ? ' active' : '');
-        btn.textContent = p;
+        // "전체"는 원래 짧으니 줄이지 않고, 실제 프로젝트명만 getProjectLabel로
+        // 줄입니다(모바일에서만 줄고, PC에서는 그대로 전체 이름이 나옵니다).
+        btn.textContent = p === '전체' ? p : getProjectLabel(p);
+        if (p !== '전체') btn.title = p; // 모바일에서 줄임말일 때, 길게 누르면 전체 이름이 보이도록
         btn.addEventListener('click', function () {
           currentFilter = p;
           renderFilterBar();
