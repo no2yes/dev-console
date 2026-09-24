@@ -77,7 +77,12 @@
           '<div class="feedback-message"></div>';
 
         if (item.screenshot) {
-          html += '<a href="' + item.screenshot + '" target="_blank"><img class="feedback-screenshot" src="' + item.screenshot + '"></a>';
+          // item.screenshot은 이제 드라이브 파일 ID입니다.
+          // "thumbnail" 주소는 실제 이미지를 직접 내려주는 주소라 <img>에 바로 쓸 수 있고,
+          // "file/d/.../view" 주소는 클릭했을 때 원본 크기로 보는 드라이브 페이지입니다.
+          var imgSrc = 'https://drive.google.com/thumbnail?id=' + item.screenshot + '&sz=w1000';
+          var viewHref = 'https://drive.google.com/file/d/' + item.screenshot + '/view';
+          html += '<a href="' + viewHref + '" target="_blank"><img class="feedback-screenshot" src="' + imgSrc + '"></a>';
         }
 
         html += '<div class="feedback-actions">' +
