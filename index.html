@@ -10,6 +10,19 @@
 
   /* 프로젝트별 필터 버튼들 */
   #filterBar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+
+  /* 선택 삭제 도구모음: 1개 이상 체크됐을 때만 나타납니다 */
+  #selectionBar {
+    display: none; align-items: center; justify-content: space-between;
+    background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: #991B1B;
+  }
+  #deleteSelectedBtn {
+    padding: 6px 14px; border-radius: 8px; border: none; background: #DC2626;
+    color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+    font-family: inherit; -webkit-appearance: none; appearance: none;
+  }
+  .feedback-checkbox-select { flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
   .filter-btn { padding: 8px 14px; border-radius: 999px; border: 1px solid #ccc; background: #fff; color: #1F2A24; font-size: 13px; cursor: pointer; font-family: inherit; -webkit-appearance: none; appearance: none; }
   .filter-btn.active { background: #2F6F5E; border-color: #2F6F5E; color: #fff; font-weight: 600; }
 
@@ -78,6 +91,12 @@
 
   <div id="filterBar"></div>
 
+  <!-- 체크박스를 하나라도 선택하면 나타나는 삭제 도구모음 -->
+  <div id="selectionBar">
+    <span id="selectionCount">0개 선택됨</span>
+    <button type="button" id="deleteSelectedBtn">선택 삭제</button>
+  </div>
+
   <div id="list"></div>
   <div id="empty">불러오는 중...</div>
   <button type="button" id="loadMoreBtn" style="display:none; width:100%; padding:12px; margin-top:8px; border-radius:10px; border:1px solid #ccc; background:#fff; font-size:14px; color:#555; cursor:pointer; font-family:inherit; -webkit-appearance:none; appearance:none;">더 보기</button>
@@ -88,6 +107,17 @@
 
     var allFeedback = [];
     var currentFilter = '전체';
+    var selectedRows = new Set(); // 체크된 항목들의 rowIndex를 담아둡니다.
+
+    function updateSelectionBar() {
+      var bar = document.getElementById('selectionBar');
+      if (selectedRows.size > 0) {
+        bar.style.display = 'flex';
+        document.getElementById('selectionCount').textContent = selectedRows.size + '개 선택됨';
+      } else {
+        bar.style.display = 'none';
+      }
+    }
 
     function render() {
       var listEl = document.getElementById('list');
@@ -118,7 +148,9 @@
           (item.screenshot ? '\n캡처: ' + item.screenshot : '') +
           (item.page ? '\n페이지: ' + item.page : '');
 
-        var html = '<span class="project-tag">' + item.project + '</span>' +
+        var isChecked = selectedRows.has(item.rowIndex);
+        var html = '<input type="checkbox" class="feedback-checkbox-select"' + (isChecked ? ' checked' : '') + '>' +
+          '<span class="project-tag">' + item.project + '</span>' +
           '<span class="feedback-message"></span>' +
           '<span class="feedback-time">' + timeStr + '</span>' +
           '<div class="feedback-actions">' +
@@ -130,6 +162,16 @@
           '</div>';
 
         card.innerHTML = html;
+
+        card.querySelector('.feedback-checkbox-select').addEventListener('click', function (e) {
+          e.stopPropagation(); // 체크박스 클릭이 카드 안 다른 클릭(제목 펼치기 등)으로 번지지 않게 합니다.
+          if (e.target.checked) {
+            selectedRows.add(item.rowIndex);
+          } else {
+            selectedRows.delete(item.rowIndex);
+          }
+          updateSelectionBar();
+        });
         // 한 줄 목록에는 AI가 요약한 짧은 제목(title)을 보여주고, 원본 전체
         // 내용은 title 속성(마우스 올리면 뜨는 말풍선)으로 남겨둡니다.
         var messageEl = card.querySelector('.feedback-message');
@@ -326,6 +368,42 @@
     });
 
     loadFeedbackList(1, 1);
+
+    document.getElementById('deleteSelectedBtn').addEventListener('click', function () {
+      var count = selectedRows.size;
+      if (count === 0) return;
+      if (!confirm(count + '개 항목을 삭제할까요? 되돌릴 수 없습니다.')) return;
+
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = '삭제 중...';
+
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ type: 'deleteFeedback', rowIndexes: Array.from(selectedRows) })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          btn.disabled = false;
+          btn.textContent = '선택 삭제';
+          if (data && data.ok) {
+            // 화면에서도 지워진 항목들을 걸러내고 다시 그립니다(새로고침 없이 즉시 반영).
+            allFeedback = allFeedback.filter(function (item) { return !selectedRows.has(item.rowIndex); });
+            selectedRows.clear();
+            updateSelectionBar();
+            renderFilterBar();
+            render();
+          } else {
+            alert('삭제 실패: ' + (data && data.error ? data.error : '알 수 없는 오류'));
+          }
+        })
+        .catch(function () {
+          btn.disabled = false;
+          btn.textContent = '선택 삭제';
+          alert('삭제 중 오류가 발생했습니다.');
+        });
+    });
   </script>
 </body>
 </html>
