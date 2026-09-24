@@ -127,6 +127,13 @@
         }
 
         card.querySelector('.resolve-btn').addEventListener('click', function () {
+          var btn = card.querySelector('.resolve-btn');
+          var originalText = btn.textContent;
+          // 누른 즉시 "처리 중..."으로 바꾸고, 다시 못 누르게 잠급니다.
+          // 이렇게 하면 서버 응답이 늦어도 "눌렸다"는 게 바로 느껴집니다.
+          btn.textContent = '처리 중...';
+          btn.disabled = true;
+
           var newResolved = !isResolved;
           fetch(GAS_URL, {
             method: 'POST',
@@ -137,8 +144,18 @@
             .then(function (data) {
               if (data && data.ok) {
                 item.status = newResolved ? '해결' : '미해결';
-                render();
+                render(); // 성공하면 목록 전체가 다시 그려지면서 버튼도 정상 상태로 돌아갑니다.
+              } else {
+                // 실패했으면 원래 글씨로 되돌리고 다시 누를 수 있게 합니다.
+                btn.textContent = originalText;
+                btn.disabled = false;
+                alert('처리에 실패했습니다: ' + (data && data.error ? data.error : '알 수 없는 오류'));
               }
+            })
+            .catch(function () {
+              btn.textContent = originalText;
+              btn.disabled = false;
+              alert('처리 중 오류가 발생했습니다.');
             });
         });
 
