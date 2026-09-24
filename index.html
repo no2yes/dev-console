@@ -20,6 +20,8 @@
   .feedback-time { font-size: 12px; color: #999; }
   .feedback-message { font-size: 14px; line-height: 1.5; white-space: pre-wrap; margin-bottom: 10px; }
   .feedback-screenshot { max-width: 100%; border-radius: 8px; border: 1px solid #eee; margin-bottom: 10px; display: block; }
+  .screenshot-toggle-btn { padding: 6px 12px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 12px; color: #555; cursor: pointer; margin-bottom: 10px; font-family: inherit; -webkit-appearance: none; appearance: none; }
+  .screenshot-loading { font-size: 12px; color: #999; padding: 8px 0; }
   .feedback-actions { display: flex; gap: 8px; }
   .feedback-actions button { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 12px; cursor: pointer; font-family: inherit; -webkit-appearance: none; appearance: none; }
   .resolve-btn.is-resolved { background: #2F6F5E; color: #fff; border-color: #2F6F5E; }
@@ -77,12 +79,11 @@
           '<div class="feedback-message"></div>';
 
         if (item.screenshot) {
-          // item.screenshot은 이제 드라이브 파일 ID입니다.
-          // "thumbnail" 주소는 실제 이미지를 직접 내려주는 주소라 <img>에 바로 쓸 수 있고,
-          // "file/d/.../view" 주소는 클릭했을 때 원본 크기로 보는 드라이브 페이지입니다.
-          var imgSrc = 'https://drive.google.com/thumbnail?id=' + item.screenshot + '&sz=w1000';
-          var viewHref = 'https://drive.google.com/file/d/' + item.screenshot + '/view';
-          html += '<a href="' + viewHref + '" target="_blank"><img class="feedback-screenshot" src="' + imgSrc + '"></a>';
+          // 캡처를 목록에 한꺼번에 다 불러오면 로딩이 오래 걸리고 화면도
+          // 정신없어지므로, 평소엔 작은 "🖼 캡처 보기" 버튼만 보여주고
+          // 눌렀을 때만 실제 이미지를 불러옵니다(지연 로딩).
+          html += '<button type="button" class="screenshot-toggle-btn" data-fileid="' + item.screenshot + '">🖼 캡처 보기</button>' +
+            '<div class="screenshot-container"></div>';
         }
 
         html += '<div class="feedback-actions">' +
@@ -119,6 +120,44 @@
               }
             });
         });
+
+        // "🖼 캡처 보기" 버튼은 처음 눌렀을 때만 실제 이미지를 불러옵니다.
+        // 두 번째 클릭부터는 이미 불러온 이미지를 접었다 펼치기만 합니다
+        // (다시 불러오지 않아서, 클릭할 때마다 매번 로딩이 걸리지 않습니다).
+        var toggleBtn = card.querySelector('.screenshot-toggle-btn');
+        if (toggleBtn) {
+          var screenshotLoaded = false;
+          var container = card.querySelector('.screenshot-container');
+          toggleBtn.addEventListener('click', function () {
+            var isOpen = container.style.display === 'block';
+            if (isOpen) {
+              container.style.display = 'none';
+              toggleBtn.textContent = '🖼 캡처 보기';
+              return;
+            }
+
+            container.style.display = 'block';
+            toggleBtn.textContent = '🖼 캡처 접기';
+
+            if (!screenshotLoaded) {
+              var fileId = toggleBtn.getAttribute('data-fileid');
+              var imgSrc = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1000';
+              var viewHref = 'https://drive.google.com/file/d/' + fileId + '/view';
+              container.innerHTML = '<div class="screenshot-loading">불러오는 중...</div>';
+
+              var img = new Image();
+              img.onload = function () {
+                container.innerHTML = '<a href="' + viewHref + '" target="_blank"><img class="feedback-screenshot" src="' + imgSrc + '"></a>';
+              };
+              img.onerror = function () {
+                container.innerHTML = '<div class="screenshot-loading">이미지를 불러오지 못했습니다.</div>';
+              };
+              img.src = imgSrc;
+
+              screenshotLoaded = true;
+            }
+          });
+        }
 
         listEl.appendChild(card);
       });
