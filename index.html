@@ -61,12 +61,14 @@
      세로로도 정렬된 열처럼 보이게 합니다. */
   .feedback-actions { flex-shrink: 0; display: flex; gap: 6px; }
   .feedback-actions button {
-    width: 48px; box-sizing: border-box;
+    width: 76px; box-sizing: border-box;
     padding: 6px 0; border-radius: 8px; border: 1px solid #ccc;
     background: #fff; font-size: 12px; cursor: pointer;
     font-family: inherit; -webkit-appearance: none; appearance: none;
     white-space: nowrap; text-align: center;
   }
+  /* 모바일(is-mobile 클래스가 body에 붙었을 때)에서만 버튼을 더 좁게 */
+  body.is-mobile .feedback-actions button { width: 48px; }
   .resolve-btn.is-resolved { background: #2F6F5E; color: #fff; border-color: #2F6F5E; }
   #empty { font-size: 13px; color: #999; margin-top: 20px; text-align: center; }
 
@@ -116,21 +118,33 @@
     var allFeedback = [];
     var currentFilter = '전체';
 
-    // 프로젝트별 줄임말입니다. 새 프로젝트를 시작할 때마다 여기에 한 줄씩
-    // 추가해주세요(같은 규칙을 "Apps Script 개발 노하우 모음" 체크리스트에도
-    // 남겨뒀습니다). 매핑에 없는 프로젝트는 자동으로 앞 2글자만 씁니다.
+    // 공간이 좁은 모바일에서만 줄임말·짧은 정보를 쓰고, PC에서는 전체
+    // 정보를 그대로 보여줍니다.
+    var isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    if (isMobileDevice) {
+      document.body.classList.add('is-mobile');
+    }
+
+    // 프로젝트별 줄임말입니다(모바일 전용). 새 프로젝트를 시작할 때마다
+    // 여기에 한 줄씩 추가해주세요(같은 규칙을 "Apps Script 개발 노하우
+    // 모음" 체크리스트에도 남겨뒀습니다). 매핑에 없는 프로젝트는 자동으로
+    // 앞 2글자만 씁니다.
     var PROJECT_ABBR = {
       '보건실 관리시스템': '보건',
       '실습실 운영시스템': '실습'
     };
-    function getProjectAbbr(fullName) {
+    function getProjectLabel(fullName) {
+      if (!isMobileDevice) return fullName; // PC는 항상 전체 이름
       if (PROJECT_ABBR[fullName]) return PROJECT_ABBR[fullName];
       return fullName.length > 2 ? fullName.slice(0, 2) : fullName;
     }
-        // 연도 없이 "09.24 13:00" 형태로 짧게 표시합니다. 복사 버튼으로 복사할
-    // 때는(맥락이 중요하니) 연도가 포함된 전체 날짜를 그대로 씁니다.
-    function formatShortTime(dateVal) {
+
+    // 모바일에서만 "09.24 13:00" 형태로 짧게 표시합니다. PC에서는 연도가
+    // 포함된 전체 날짜를 그대로 보여줍니다. 복사 버튼으로 복사할 때는
+    // (기기와 무관하게, 맥락이 중요하니) 항상 전체 날짜를 씁니다.
+    function formatTimeLabel(dateVal) {
       var d = new Date(dateVal);
+      if (!isMobileDevice) return d.toLocaleString('ko-KR');
       var mm = String(d.getMonth() + 1).padStart(2, '0');
       var dd = String(d.getDate()).padStart(2, '0');
       var hh = String(d.getHours()).padStart(2, '0');
@@ -170,8 +184,8 @@
         var card = document.createElement('div');
         card.className = 'feedback-card' + (isResolved ? ' resolved' : '');
 
-        // 화면엔 짧게(연도 없이), 복사할 때는 전체 날짜로(맥락 보존용) 나눠 씁니다.
-        var shortTimeStr = formatShortTime(item.time);
+        // 화면엔 기기에 맞게(PC=전체, 모바일=짧게), 복사할 때는 항상 전체 날짜로 씁니다.
+        var timeLabel = formatTimeLabel(item.time);
         var fullTimeStr = new Date(item.time).toLocaleString('ko-KR');
 
         var copyText = '[' + item.project + '] ' + fullTimeStr + '\n' + item.message +
@@ -187,17 +201,24 @@
         } else if (item.aiUsed === '수동') {
           aiBadge = '<span class="ai-badge" title="AI 요약 실패 — 글자수로 잘랐어요">✂️</span>';
         }
+        var placeholderWidth = isMobileDevice ? '48px' : '76px';
+        var screenshotBtnText = isMobileDevice ? '캡처' : '🖼 캡처';
+        var copyBtnText = isMobileDevice ? '복사' : '📋 복사';
+        var resolveBtnText = isResolved
+          ? (isMobileDevice ? '해결됨' : '✓ 해결됨')
+          : '해결';
+
         var html = '<input type="checkbox" class="feedback-checkbox-select"' + (isChecked ? ' checked' : '') + '>' +
-          '<span class="project-tag" title="' + item.project + '">' + getProjectAbbr(item.project) + '</span>' +
+          '<span class="project-tag" title="' + item.project + '">' + getProjectLabel(item.project) + '</span>' +
           aiBadge +
           '<span class="feedback-message"></span>' +
-          '<span class="feedback-time" title="' + fullTimeStr + '">' + shortTimeStr + '</span>' +
+          '<span class="feedback-time" title="' + fullTimeStr + '">' + timeLabel + '</span>' +
           '<div class="feedback-actions">' +
           (item.screenshot
-            ? '<button type="button" class="screenshot-toggle-btn" data-fileid="' + item.screenshot + '">캡처</button>'
-            : '<span style="width:48px;"></span>') +
-          '<button type="button" class="copy-btn">복사</button>' +
-          '<button type="button" class="resolve-btn' + (isResolved ? ' is-resolved' : '') + '">' + (isResolved ? '해결됨' : '해결') + '</button>' +
+            ? '<button type="button" class="screenshot-toggle-btn" data-fileid="' + item.screenshot + '">' + screenshotBtnText + '</button>'
+            : '<span style="width:' + placeholderWidth + ';"></span>') +
+          '<button type="button" class="copy-btn">' + copyBtnText + '</button>' +
+          '<button type="button" class="resolve-btn' + (isResolved ? ' is-resolved' : '') + '">' + resolveBtnText + '</button>' +
           '</div>';
 
         card.innerHTML = html;
@@ -287,12 +308,12 @@
             var isOpen = container.style.display === 'block';
             if (isOpen) {
               container.style.display = 'none';
-              toggleBtn.textContent = '캡처';
+              toggleBtn.textContent = isMobileDevice ? '캡처' : '🖼 캡처';
               return;
             }
 
             container.style.display = 'block';
-            toggleBtn.textContent = '접기';
+            toggleBtn.textContent = isMobileDevice ? '접기' : '🖼 접기';
 
             if (!screenshotLoaded) {
               // 캡처 원본 자체가 이미 화면의 60% 크기로 고정되어 저장되기 때문에,
