@@ -104,9 +104,11 @@
           '</div>';
 
         card.innerHTML = html;
-        // 메시지는 innerHTML이 아니라 textContent로 넣어서, 사용자가 입력한 글에
-        // 우연히 HTML 태그 같은 문자가 섞여 있어도 그대로 안전하게 표시되게 합니다.
-        card.querySelector('.feedback-message').textContent = item.message;
+        // 한 줄 목록에는 AI가 요약한 짧은 제목(title)을 보여주고, 원본 전체
+        // 내용은 title 속성(마우스 올리면 뜨는 말풍선)으로 남겨둡니다.
+        var messageEl = card.querySelector('.feedback-message');
+        messageEl.textContent = item.title || item.message;
+        messageEl.title = item.message;
 
         card.querySelector('.copy-btn').addEventListener('click', function () {
           navigator.clipboard.writeText(copyText).then(function () {
