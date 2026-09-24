@@ -142,7 +142,7 @@
             if (!screenshotLoaded) {
               var fileId = toggleBtn.getAttribute('data-fileid');
               var imgSrc = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1000';
-              var viewHref = 'https://drive.google.com/file/d/' + fileId + '/view';
+              var viewHref = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w2000';
               container.innerHTML = '<div class="screenshot-loading">불러오는 중...</div>';
 
               var img = new Image();
