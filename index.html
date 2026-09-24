@@ -88,9 +88,9 @@
           '<span class="feedback-message"></span>' +
           '<span class="feedback-time">' + timeStr + '</span>' +
           '<div class="feedback-actions">' +
-          (item.screenshot ? '<button type="button" class="screenshot-toggle-btn" data-fileid="' + item.screenshot + '">🖼</button>' : '') +
-          '<button type="button" class="copy-btn">📋</button>' +
-          '<button type="button" class="resolve-btn' + (isResolved ? ' is-resolved' : '') + '">' + (isResolved ? '✓' : '해결') + '</button>' +
+          (item.screenshot ? '<button type="button" class="screenshot-toggle-btn" data-fileid="' + item.screenshot + '">🖼 캡처</button>' : '') +
+          '<button type="button" class="copy-btn">📋 복사</button>' +
+          '<button type="button" class="resolve-btn' + (isResolved ? ' is-resolved' : '') + '">' + (isResolved ? '✓ 해결됨' : '해결') + '</button>' +
           '</div>';
 
         card.innerHTML = html;
@@ -143,12 +143,12 @@
             var isOpen = container.style.display === 'block';
             if (isOpen) {
               container.style.display = 'none';
-              toggleBtn.textContent = '🖼 캡처 보기';
+              toggleBtn.textContent = '🖼 캡처';
               return;
             }
 
             container.style.display = 'block';
-            toggleBtn.textContent = '🖼 캡처 접기';
+            toggleBtn.textContent = '🖼 접기';
 
             if (!screenshotLoaded) {
               // 캡처 원본 자체가 이미 화면의 60% 크기로 고정되어 저장되기 때문에,
