@@ -51,10 +51,30 @@
   }
   .resolve-btn.is-resolved { background: #2F6F5E; color: #fff; border-color: #2F6F5E; }
   #empty { font-size: 13px; color: #999; margin-top: 20px; text-align: center; }
+
+  /* 자료를 불러오는 동안 화면 전체를 덮는 로딩 표시입니다 */
+  #pageLoadingOverlay {
+    position: fixed; inset: 0; background: #F7F5EF;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 900;
+  }
+  #pageLoadingOverlay .spinner {
+    width: 48px; height: 48px; border: 5px solid rgba(47, 111, 94, 0.15);
+    border-top-color: #2F6F5E; border-radius: 50%; animation: plspin 0.8s linear infinite;
+  }
+  @keyframes plspin { to { transform: rotate(360deg); } }
+  #pageLoadingOverlay .loading-text { margin-top: 14px; font-size: 15px; font-weight: 600; color: #1F2A24; }
 </style>
 </head>
 <body>
   <h1>개발자콘솔 — 피드백 목록</h1>
+
+  <!-- 자료를 불러오는 동안 화면 전체를 덮는 로딩 표시입니다. 다 불러오면
+       자바스크립트에서 숨깁니다. -->
+  <div id="pageLoadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">피드백을 불러오고 있어요...</div>
+  </div>
 
   <div id="filterBar"></div>
 
@@ -273,17 +293,28 @@
           loadMoreBtn.disabled = false;
           loadMoreBtn.textContent = '더 보기';
           loadMoreBtn.style.display = hasMorePages ? 'block' : 'none';
+
+          // 첫 페이지를 성공적으로 불러왔으면, 전체 화면 로딩 표시를 걷어냅니다.
+          if (page === 1) {
+            document.getElementById('pageLoadingOverlay').style.display = 'none';
+          }
         })
         .catch(function () {
           if (attempt < 3) {
-            document.getElementById('empty').textContent =
-              '불러오는 중... (재시도 ' + attempt + '/3)';
+            if (page === 1) {
+              document.querySelector('#pageLoadingOverlay .loading-text').textContent =
+                '불러오는 중... (재시도 ' + attempt + '/3)';
+            }
             setTimeout(function () {
               loadFeedbackList(page, attempt + 1);
             }, 800);
           } else {
+            if (page === 1) {
+              document.getElementById('pageLoadingOverlay').style.display = 'none';
+            }
             document.getElementById('empty').textContent =
               '데이터를 불러오지 못했습니다. 새로고침해 주세요.';
+            document.getElementById('empty').style.display = 'block';
             loadMoreBtn.disabled = false;
             loadMoreBtn.textContent = '더 보기';
           }
