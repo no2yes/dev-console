@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개발자콘솔</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; margin: 0; padding: 20px; background: #F7F5EF; color: #1F2A24; }
+  h1 { font-size: 18px; margin: 0 0 16px; }
+
+  /* 프로젝트별 필터 버튼들 */
+  #filterBar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-btn { padding: 8px 14px; border-radius: 999px; border: 1px solid #ccc; background: #fff; color: #1F2A24; font-size: 13px; cursor: pointer; font-family: inherit; -webkit-appearance: none; appearance: none; }
+  .filter-btn.active { background: #2F6F5E; border-color: #2F6F5E; color: #fff; font-weight: 600; }
+
+  .feedback-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .feedback-card.resolved { opacity: 0.5; }
+  .feedback-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .project-tag { display: inline-block; padding: 3px 10px; border-radius: 999px; background: #EAF2EE; color: #2F6F5E; font-size: 12px; font-weight: 600; }
+  .feedback-time { font-size: 12px; color: #999; }
+  .feedback-message { font-size: 14px; line-height: 1.5; white-space: pre-wrap; margin-bottom: 10px; }
+  .feedback-screenshot { max-width: 100%; border-radius: 8px; border: 1px solid #eee; margin-bottom: 10px; display: block; }
+  .feedback-actions { display: flex; gap: 8px; }
+  .feedback-actions button { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 12px; cursor: pointer; font-family: inherit; -webkit-appearance: none; appearance: none; }
+  .resolve-btn.is-resolved { background: #2F6F5E; color: #fff; border-color: #2F6F5E; }
+  #empty { font-size: 13px; color: #999; margin-top: 20px; text-align: center; }
+</style>
+</head>
+<body>
+  <h1>개발자콘솔 — 피드백 목록</h1>
+
+  <div id="filterBar"></div>
+
+  <div id="list"></div>
+  <div id="empty">불러오는 중...</div>
+
+  <script>
+    // ▼▼ 개발자콘솔 GAS 웹 앱의 실제 exec 주소로 바꿔주세요 ▼▼
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyaPRuDlrSFI9pEkC7lluAGI3ql-pnBRuLRGGt5L4ZHgXabZYau251ClzYyHPahRgZB/exec';
+
+    var allFeedback = [];
+    var currentFilter = '전체';
+
+    function render() {
+      var listEl = document.getElementById('list');
+      var emptyEl = document.getElementById('empty');
+      listEl.innerHTML = '';
+
+      var filtered = currentFilter === '전체'
+        ? allFeedback
+        : allFeedback.filter(function (f) { return f.project === currentFilter; });
+
+      if (filtered.length === 0) {
+        emptyEl.textContent = '해당하는 피드백이 없습니다.';
+        emptyEl.style.display = 'block';
+        return;
+      }
+      emptyEl.style.display = 'none';
+
+      filtered.forEach(function (item) {
+        var isResolved = item.status === '해결';
+        var card = document.createElement('div');
+        card.className = 'feedback-card' + (isResolved ? ' resolved' : '');
+
+        var timeStr = new Date(item.time).toLocaleString('ko-KR');
+
+        // 클립보드로 복사할 때 쓸 정리된 텍스트입니다.
+        // Claude에게 그대로 붙여넣으면 맥락 파악이 되도록 만듭니다.
+        var copyText = '[' + item.project + '] ' + timeStr + '\n' + item.message +
+          (item.screenshot ? '\n캡처: ' + item.screenshot : '') +
+          (item.page ? '\n페이지: ' + item.page : '');
+
+        var html = '<div class="feedback-top">' +
+          '<span class="project-tag">' + item.project + '</span>' +
+          '<span class="feedback-time">' + timeStr + '</span>' +
+          '</div>' +
+          '<div class="feedback-message"></div>';
+
+        if (item.screenshot) {
+          html += '<a href="' + item.screenshot + '" target="_blank"><img class="feedback-screenshot" src="' + item.screenshot + '"></a>';
+        }
+
+        html += '<div class="feedback-actions">' +
+          '<button type="button" class="copy-btn">📋 복사</button>' +
+          '<button type="button" class="resolve-btn' + (isResolved ? ' is-resolved' : '') + '">' + (isResolved ? '✓ 해결됨' : '해결 표시') + '</button>' +
+          '</div>';
+
+        card.innerHTML = html;
+        // 메시지는 innerHTML이 아니라 textContent로 넣어서, 사용자가 입력한 글에
+        // 우연히 HTML 태그 같은 문자가 섞여 있어도 그대로 안전하게 표시되게 합니다.
+        card.querySelector('.feedback-message').textContent = item.message;
+
+        card.querySelector('.copy-btn').addEventListener('click', function () {
+          navigator.clipboard.writeText(copyText).then(function () {
+            var btn = card.querySelector('.copy-btn');
+            var original = btn.textContent;
+            btn.textContent = '복사됨!';
+            setTimeout(function () { btn.textContent = original; }, 1200);
+          });
+        });
+
+        card.querySelector('.resolve-btn').addEventListener('click', function () {
+          var newResolved = !isResolved;
+          fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ type: 'resolve', rowIndex: item.rowIndex, resolved: newResolved })
+          })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+              if (data && data.ok) {
+                item.status = newResolved ? '해결' : '미해결';
+                render();
+              }
+            });
+        });
+
+        listEl.appendChild(card);
+      });
+    }
+
+    function renderFilterBar() {
+      var projects = ['전체'];
+      allFeedback.forEach(function (item) {
+        if (projects.indexOf(item.project) === -1) projects.push(item.project);
+      });
+
+      var bar = document.getElementById('filterBar');
+      bar.innerHTML = '';
+      projects.forEach(function (p) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'filter-btn' + (p === currentFilter ? ' active' : '');
+        btn.textContent = p;
+        btn.addEventListener('click', function () {
+          currentFilter = p;
+          renderFilterBar();
+          render();
+        });
+        bar.appendChild(btn);
+      });
+    }
+
+    fetch(GAS_URL + '?action=list')
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        allFeedback = data || [];
+        renderFilterBar();
+        render();
+      })
+      .catch(function () {
+        document.getElementById('empty').textContent = '데이터를 불러오지 못했습니다.';
+      });
+  </script>
+</body>
+</html>
