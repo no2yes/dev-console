@@ -203,8 +203,13 @@
         var timeLabel = formatTimeLabel(item.time);
         var fullTimeStr = new Date(item.time).toLocaleString('ko-KR');
 
+        // 파일 ID만 주면 아무도 열어볼 수 없으니, 클릭하면 바로 열리는
+        // 구글 드라이브 링크 형태로 만들어서 복사되게 합니다.
+        var screenshotLink = item.screenshot
+          ? 'https://drive.google.com/file/d/' + item.screenshot + '/view'
+          : '';
         var copyText = '[' + item.project + '] ' + fullTimeStr + '\n' + item.message +
-          (item.screenshot ? '\n캡처: ' + item.screenshot : '') +
+          (screenshotLink ? '\n캡처: ' + screenshotLink : '') +
           (item.page ? '\n페이지: ' + item.page : '');
 
         var isChecked = selectedRows.has(item.rowIndex);
