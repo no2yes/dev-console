@@ -188,16 +188,34 @@
       });
     }
 
-    fetch(GAS_URL + '?action=list')
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        allFeedback = data || [];
-        renderFilterBar();
-        render();
-      })
-      .catch(function () {
-        document.getElementById('empty').textContent = '데이터를 불러오지 못했습니다.';
-      });
+    // 목록 불러오기를 함수로 분리해서, 실패했을 때 재시도할 수 있게 합니다.
+    // attempt: 지금이 몇 번째 시도인지 (1부터 시작, 최대 3번까지 시도합니다)
+    function loadFeedbackList(attempt) {
+      fetch(GAS_URL + '?action=list')
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          allFeedback = data || [];
+          renderFilterBar();
+          render();
+        })
+        .catch(function () {
+          // 구글 Apps Script는 가끔 응답 중계 단계에서 일시적으로 실패하는
+          // 경우가 있어서(저희 데이터나 코드 문제가 아닙니다), 최대 3번까지
+          // 자동으로 다시 시도합니다.
+          if (attempt < 3) {
+            document.getElementById('empty').textContent =
+              '불러오는 중... (재시도 ' + attempt + '/3)';
+            setTimeout(function () {
+              loadFeedbackList(attempt + 1);
+            }, 800);
+          } else {
+            document.getElementById('empty').textContent =
+              '데이터를 불러오지 못했습니다. 새로고침해 주세요.';
+          }
+        });
+    }
+
+    loadFeedbackList(1);
   </script>
 </body>
 </html>
