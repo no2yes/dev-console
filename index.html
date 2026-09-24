@@ -29,6 +29,12 @@
     flex: 1; min-width: 0; font-size: 14px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .feedback-message { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+  .message-detail {
+    background: #FAF9F5; border: 1px solid #eee; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 6px; font-size: 14px;
+    line-height: 1.5; white-space: pre-wrap; display: none;
+  }
   .feedback-time { flex-shrink: 0; font-size: 12px; color: #999; }
   .feedback-screenshot { max-width: 100%; border-radius: 8px; border: 1px solid #eee; margin-bottom: 10px; display: block; }
 
@@ -108,7 +114,10 @@
         // 내용은 title 속성(마우스 올리면 뜨는 말풍선)으로 남겨둡니다.
         var messageEl = card.querySelector('.feedback-message');
         messageEl.textContent = item.title || item.message;
-        messageEl.title = item.message;
+        messageEl.addEventListener('click', function () {
+          var isOpen = messageDetailRow.style.display === 'block';
+          messageDetailRow.style.display = isOpen ? 'none' : 'block';
+        });
 
         card.querySelector('.copy-btn').addEventListener('click', function () {
           navigator.clipboard.writeText(copyText).then(function () {
@@ -119,14 +128,19 @@
           });
         });
 
-        // 한 줄 레이아웃이라, 캡처 이미지가 펼쳐질 자리를 카드 바로 아래에
-        // 별도로 만들어서 필요할 때만 넣어줍니다(카드 자체는 항상 한 줄 유지).
+        // 한 줄 레이아웃이라, 캡처 이미지와 전체 내용이 펼쳐질 자리를
+        // 카드 바로 아래에 따로 만들어서 필요할 때만 보여줍니다.
         if (item.screenshot) {
           var screenshotRow = document.createElement('div');
           screenshotRow.className = 'screenshot-container';
           screenshotRow.style.marginBottom = '6px';
           card.insertAdjacentElement('afterend', screenshotRow);
         }
+
+        var messageDetailRow = document.createElement('div');
+        messageDetailRow.className = 'message-detail';
+        messageDetailRow.textContent = item.message; // textContent라 HTML 태그 걱정 없이 안전합니다.
+        card.insertAdjacentElement('afterend', messageDetailRow);
 
         card.querySelector('.resolve-btn').addEventListener('click', function () {
           var btn = card.querySelector('.resolve-btn');
@@ -206,6 +220,7 @@
         if (item.screenshot) {
           listEl.appendChild(screenshotRow);
         }
+        listEl.appendChild(messageDetailRow);
       });
     }
 
