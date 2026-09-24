@@ -115,6 +115,28 @@
 
     var allFeedback = [];
     var currentFilter = '전체';
+
+    // 프로젝트별 줄임말입니다. 새 프로젝트를 시작할 때마다 여기에 한 줄씩
+    // 추가해주세요(같은 규칙을 "Apps Script 개발 노하우 모음" 체크리스트에도
+    // 남겨뒀습니다). 매핑에 없는 프로젝트는 자동으로 앞 2글자만 씁니다.
+    var PROJECT_ABBR = {
+      '보건실 관리시스템': '보건',
+      '실습실 운영시스템': '실습'
+    };
+    function getProjectAbbr(fullName) {
+      if (PROJECT_ABBR[fullName]) return PROJECT_ABBR[fullName];
+      return fullName.length > 2 ? fullName.slice(0, 2) : fullName;
+    }
+        // 연도 없이 "09.24 13:00" 형태로 짧게 표시합니다. 복사 버튼으로 복사할
+    // 때는(맥락이 중요하니) 연도가 포함된 전체 날짜를 그대로 씁니다.
+    function formatShortTime(dateVal) {
+      var d = new Date(dateVal);
+      var mm = String(d.getMonth() + 1).padStart(2, '0');
+      var dd = String(d.getDate()).padStart(2, '0');
+      var hh = String(d.getHours()).padStart(2, '0');
+      var mi = String(d.getMinutes()).padStart(2, '0');
+      return mm + '.' + dd + ' ' + hh + ':' + mi;
+    }
     var selectedRows = new Set(); // 체크된 항목들의 rowIndex를 담아둡니다.
 
     function updateSelectionBar() {
@@ -148,11 +170,11 @@
         var card = document.createElement('div');
         card.className = 'feedback-card' + (isResolved ? ' resolved' : '');
 
-        var timeStr = new Date(item.time).toLocaleString('ko-KR');
+        // 화면엔 짧게(연도 없이), 복사할 때는 전체 날짜로(맥락 보존용) 나눠 씁니다.
+        var shortTimeStr = formatShortTime(item.time);
+        var fullTimeStr = new Date(item.time).toLocaleString('ko-KR');
 
-        // 클립보드로 복사할 때 쓸 정리된 텍스트입니다.
-        // Claude에게 그대로 붙여넣으면 맥락 파악이 되도록 만듭니다.
-        var copyText = '[' + item.project + '] ' + timeStr + '\n' + item.message +
+        var copyText = '[' + item.project + '] ' + fullTimeStr + '\n' + item.message +
           (item.screenshot ? '\n캡처: ' + item.screenshot : '') +
           (item.page ? '\n페이지: ' + item.page : '');
 
@@ -166,10 +188,10 @@
           aiBadge = '<span class="ai-badge" title="AI 요약 실패 — 글자수로 잘랐어요">✂️</span>';
         }
         var html = '<input type="checkbox" class="feedback-checkbox-select"' + (isChecked ? ' checked' : '') + '>' +
-          '<span class="project-tag">' + item.project + '</span>' +
+          '<span class="project-tag" title="' + item.project + '">' + getProjectAbbr(item.project) + '</span>' +
           aiBadge +
           '<span class="feedback-message"></span>' +
-          '<span class="feedback-time">' + timeStr + '</span>' +
+          '<span class="feedback-time" title="' + fullTimeStr + '">' + shortTimeStr + '</span>' +
           '<div class="feedback-actions">' +
           (item.screenshot
             ? '<button type="button" class="screenshot-toggle-btn" data-fileid="' + item.screenshot + '">🖼 캡처</button>'
