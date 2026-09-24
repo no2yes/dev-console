@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>개발자콘솔</title>
 <style>
+  /* 모바일 브라우저가 "글이 많아지면 자동으로 확대"하는 기능을 꺼서,
+     항목을 여러 개 펼쳐도 글씨 크기가 제멋대로 커지지 않게 합니다. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; margin: 0; padding: 20px; background: #F7F5EF; color: #1F2A24; }
   h1 { font-size: 18px; margin: 0 0 16px; }
 
@@ -69,6 +72,18 @@
   }
   /* 모바일(is-mobile 클래스가 body에 붙었을 때)에서만 버튼을 더 좁게 */
   body.is-mobile .feedback-actions button { width: 48px; }
+
+  /* 모바일이면서 "세로화면"일 때만: 공간이 부족해 제목 자체가 안 보이는
+     문제를 막기 위해, 캡처 버튼만 남기고 복사·해결 버튼(그리고 캡처가
+     없을 때의 빈 자리)을 숨깁니다. 화면을 돌리면(가로↔세로) 자동으로
+     다시 나타나거나 사라집니다(자바스크립트 없이 CSS만으로 처리). */
+  @media (orientation: portrait) {
+    body.is-mobile .copy-btn,
+    body.is-mobile .resolve-btn,
+    body.is-mobile .feedback-actions > span {
+      display: none;
+    }
+  }
   .resolve-btn.is-resolved { background: #2F6F5E; color: #fff; border-color: #2F6F5E; }
   #empty { font-size: 13px; color: #999; margin-top: 20px; text-align: center; }
 
