@@ -140,14 +140,17 @@
             toggleBtn.textContent = '🖼 캡처 접기';
 
             if (!screenshotLoaded) {
+              // 캡처 원본 자체가 이미 화면의 60% 크기로 고정되어 저장되기 때문에,
+              // 더 큰 사이즈를 요청해도 원본보다 커질 수 없습니다. 그래서 "더 크게
+              // 보기"용 두 번째 클릭은 의미가 없어 없앴고, 처음 볼 때부터 바로
+              // 이 용도로 쓸 수 있는 가장 큰 사이즈(w1600)로 한 번만 보여줍니다.
               var fileId = toggleBtn.getAttribute('data-fileid');
-              var imgSrc = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1000';
-              var viewHref = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w2000';
+              var imgSrc = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1600';
               container.innerHTML = '<div class="screenshot-loading">불러오는 중...</div>';
 
               var img = new Image();
               img.onload = function () {
-                container.innerHTML = '<a href="' + viewHref + '" target="_blank"><img class="feedback-screenshot" src="' + imgSrc + '"></a>';
+                container.innerHTML = '<img class="feedback-screenshot" src="' + imgSrc + '">';
               };
               img.onerror = function () {
                 container.innerHTML = '<div class="screenshot-loading">이미지를 불러오지 못했습니다.</div>';
