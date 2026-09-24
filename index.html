@@ -13,17 +13,28 @@
   .filter-btn { padding: 8px 14px; border-radius: 999px; border: 1px solid #ccc; background: #fff; color: #1F2A24; font-size: 13px; cursor: pointer; font-family: inherit; -webkit-appearance: none; appearance: none; }
   .filter-btn.active { background: #2F6F5E; border-color: #2F6F5E; color: #fff; font-weight: 600; }
 
-  .feedback-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  /* 한 줄 목록 레이아웃: 프로젝트 태그 - 내용 - 시간 - 버튼들이 가로로
+     나란히 배치됩니다. 내용이 길면 "..."으로 줄여서 한 줄을 유지합니다. */
+  .feedback-card {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; border: 1px solid #eee; border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 6px;
+  }
   .feedback-card.resolved { opacity: 0.5; }
-  .feedback-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .project-tag { display: inline-block; padding: 3px 10px; border-radius: 999px; background: #EAF2EE; color: #2F6F5E; font-size: 12px; font-weight: 600; }
-  .feedback-time { font-size: 12px; color: #999; }
-  .feedback-message { font-size: 14px; line-height: 1.5; white-space: pre-wrap; margin-bottom: 10px; }
+  .project-tag {
+    flex-shrink: 0; padding: 3px 10px; border-radius: 999px;
+    background: #EAF2EE; color: #2F6F5E; font-size: 12px; font-weight: 600;
+  }
+  .feedback-message {
+    flex: 1; min-width: 0; font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .feedback-time { flex-shrink: 0; font-size: 12px; color: #999; }
   .feedback-screenshot { max-width: 100%; border-radius: 8px; border: 1px solid #eee; margin-bottom: 10px; display: block; }
   .screenshot-toggle-btn { padding: 6px 12px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 12px; color: #555; cursor: pointer; margin-bottom: 10px; font-family: inherit; -webkit-appearance: none; appearance: none; }
   .screenshot-loading { font-size: 12px; color: #999; padding: 8px 0; }
-  .feedback-actions { display: flex; gap: 8px; }
-  .feedback-actions button { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 12px; cursor: pointer; font-family: inherit; -webkit-appearance: none; appearance: none; }
+  .feedback-actions { flex-shrink: 0; display: flex; gap: 6px; }
+  .feedback-actions button { padding: 6px 10px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 12px; cursor: pointer; font-family: inherit; -webkit-appearance: none; appearance: none; white-space: nowrap; }
   .resolve-btn.is-resolved { background: #2F6F5E; color: #fff; border-color: #2F6F5E; }
   #empty { font-size: 13px; color: #999; margin-top: 20px; text-align: center; }
 </style>
@@ -73,23 +84,13 @@
           (item.screenshot ? '\n캡처: ' + item.screenshot : '') +
           (item.page ? '\n페이지: ' + item.page : '');
 
-        var html = '<div class="feedback-top">' +
-          '<span class="project-tag">' + item.project + '</span>' +
+        var html = '<span class="project-tag">' + item.project + '</span>' +
+          '<span class="feedback-message"></span>' +
           '<span class="feedback-time">' + timeStr + '</span>' +
-          '</div>' +
-          '<div class="feedback-message"></div>';
-
-        if (item.screenshot) {
-          // 캡처를 목록에 한꺼번에 다 불러오면 로딩이 오래 걸리고 화면도
-          // 정신없어지므로, 평소엔 작은 "🖼 캡처 보기" 버튼만 보여주고
-          // 눌렀을 때만 실제 이미지를 불러옵니다(지연 로딩).
-          html += '<button type="button" class="screenshot-toggle-btn" data-fileid="' + item.screenshot + '">🖼 캡처 보기</button>' +
-            '<div class="screenshot-container"></div>';
-        }
-
-        html += '<div class="feedback-actions">' +
-          '<button type="button" class="copy-btn">📋 복사</button>' +
-          '<button type="button" class="resolve-btn' + (isResolved ? ' is-resolved' : '') + '">' + (isResolved ? '✓ 해결됨' : '해결 표시') + '</button>' +
+          '<div class="feedback-actions">' +
+          (item.screenshot ? '<button type="button" class="screenshot-toggle-btn" data-fileid="' + item.screenshot + '">🖼</button>' : '') +
+          '<button type="button" class="copy-btn">📋</button>' +
+          '<button type="button" class="resolve-btn' + (isResolved ? ' is-resolved' : '') + '">' + (isResolved ? '✓' : '해결') + '</button>' +
           '</div>';
 
         card.innerHTML = html;
@@ -105,6 +106,15 @@
             setTimeout(function () { btn.textContent = original; }, 1200);
           });
         });
+
+        // 한 줄 레이아웃이라, 캡처 이미지가 펼쳐질 자리를 카드 바로 아래에
+        // 별도로 만들어서 필요할 때만 넣어줍니다(카드 자체는 항상 한 줄 유지).
+        if (item.screenshot) {
+          var screenshotRow = document.createElement('div');
+          screenshotRow.className = 'screenshot-container';
+          screenshotRow.style.marginBottom = '6px';
+          card.insertAdjacentElement('afterend', screenshotRow);
+        }
 
         card.querySelector('.resolve-btn').addEventListener('click', function () {
           var newResolved = !isResolved;
@@ -128,7 +138,7 @@
         var toggleBtn = card.querySelector('.screenshot-toggle-btn');
         if (toggleBtn) {
           var screenshotLoaded = false;
-          var container = card.querySelector('.screenshot-container');
+          var container = screenshotRow;
           toggleBtn.addEventListener('click', function () {
             var isOpen = container.style.display === 'block';
             if (isOpen) {
@@ -164,6 +174,9 @@
         }
 
         listEl.appendChild(card);
+        if (item.screenshot) {
+          listEl.appendChild(screenshotRow);
+        }
       });
     }
 
