@@ -37,9 +37,20 @@
      나란히 배치됩니다. 내용이 길면 "..."으로 줄여서 한 줄을 유지합니다. */
   .feedback-card {
     display: flex; align-items: center; gap: 10px;
-    background: #fff; border: 1px solid #eee; border-radius: 10px;
-    padding: 10px 14px; margin-bottom: 6px;
+    background: #fff; border: 0; border-bottom: 1px solid #eee; border-radius: 0;
+    padding: 10px 14px; margin: 0;
   }
+  /* 목록 전체를 하나의 박스로 묶고, 항목 사이는 얇은 구분선만 둡니다. */
+  #list { background: #fff; border: 1px solid #eee; border-radius: 10px; overflow: hidden; }
+  #list:empty { display: none; }
+  #list > :last-child { border-bottom: 0; }
+  #pager { display: none; justify-content: center; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 14px; }
+  #pager button {
+    min-width: 34px; padding: 7px 10px; border-radius: 8px; border: 1px solid #ddd; background: #fff;
+    font-size: 13px; color: #555; cursor: pointer; font-family: inherit; -webkit-appearance: none; appearance: none;
+  }
+  #pager button.active { background: #2F6F5E; border-color: #2F6F5E; color: #fff; font-weight: 600; cursor: default; }
+  #pager button:disabled:not(.active) { opacity: 0.4; cursor: default; }
   .feedback-card.resolved { opacity: 0.5; }
   .project-tag {
     flex-shrink: 0; padding: 3px 10px; border-radius: 999px;
@@ -52,8 +63,8 @@
   .feedback-message { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
   .ai-badge { flex-shrink: 0; font-size: 13px; }
   .message-detail {
-    background: #FAF9F5; border: 1px solid #eee; border-radius: 10px;
-    padding: 12px 14px; margin-bottom: 6px; font-size: 14px;
+    background: #FAF9F5; border: 0; border-bottom: 1px solid #eee; border-radius: 0;
+    padding: 12px 14px; margin: 0; font-size: 14px;
     line-height: 1.5; white-space: pre-wrap; display: none;
   }
   .feedback-time { flex-shrink: 0; font-size: 12px; color: #999; }
@@ -178,10 +189,10 @@
 
   <div id="list"></div>
   <div id="empty">불러오는 중...</div>
-  <button type="button" id="loadMoreBtn" style="display:none; width:100%; padding:12px; margin-top:8px; border-radius:10px; border:1px solid #ccc; background:#fff; font-size:14px; color:#555; cursor:pointer; font-family:inherit; -webkit-appearance:none; appearance:none;">더 보기</button>
+  <div id="pager"></div>
 
   <!-- 페이지 버전: 짧은페이지명(con) + 날짜 + 시간 + 초. 이 파일을 고칠 때마다 함께 바꾸고, 개발 로그에 같은 값을 적어 코드 상태와 대조합니다. -->
-  <div id="pageVersion">con20261001234342</div>
+  <div id="pageVersion">con20261003124003</div>
 
   <script>
     // ▼▼ 개발자콘솔 GAS 웹 앱의 실제 exec 주소로 바꿔주세요 ▼▼
@@ -235,6 +246,7 @@
       updateSelectionBar();
       document.getElementById('list').innerHTML = '';
       document.getElementById('filterBar').innerHTML = '';
+      document.getElementById('pager').style.display = 'none';
       document.getElementById('pageLoadingOverlay').style.display = 'none';
       document.getElementById('loginOverlay').style.display = 'flex';
       otpRow.style.display = 'none';
@@ -251,8 +263,7 @@
       var overlay = document.getElementById('pageLoadingOverlay');
       overlay.querySelector('.loading-text').textContent = '피드백을 불러오고 있어요...';
       overlay.style.display = 'flex';
-      loadMoreBtn.style.display = 'none';
-      loadMoreBtn.disabled = false;
+      document.getElementById('pager').style.display = 'none';
       document.getElementById('empty').textContent = '불러오는 중...';
       document.getElementById('empty').style.display = 'block';
       loadFeedbackList(1, 1);
@@ -400,9 +411,7 @@
       var emptyEl = document.getElementById('empty');
       listEl.innerHTML = '';
 
-      var filtered = currentFilter === '전체'
-        ? allFeedback
-        : allFeedback.filter(function (f) { return f.project === currentFilter; });
+      var filtered = allFeedback; // 프로젝트 필터는 서버에서 이미 적용되어 내려옵니다.
 
       if (filtered.length === 0) {
         emptyEl.textContent = '해당하는 피드백이 없습니다.';
@@ -492,7 +501,8 @@
         if (item.screenshot) {
           var screenshotRow = document.createElement('div');
           screenshotRow.className = 'screenshot-container';
-          screenshotRow.style.marginBottom = '6px';
+          screenshotRow.style.padding = '10px 14px 0';
+          screenshotRow.style.borderBottom = '1px solid #eee';
           card.insertAdjacentElement('afterend', screenshotRow);
         }
 
@@ -581,9 +591,10 @@
 
     function renderFilterBar() {
       var projects = ['전체'];
-      allFeedback.forEach(function (item) {
-        if (projects.indexOf(item.project) === -1) projects.push(item.project);
+      serverProjects.forEach(function (p) {
+        if (projects.indexOf(p) === -1) projects.push(p);
       });
+      if (currentFilter !== '전체' && projects.indexOf(currentFilter) === -1) projects.push(currentFilter);
 
       var bar = document.getElementById('filterBar');
       bar.innerHTML = '';
@@ -596,74 +607,97 @@
         btn.textContent = p === '전체' ? p : getProjectLabel(p);
         if (p !== '전체') btn.title = p; // 모바일에서 줄임말일 때, 길게 누르면 전체 이름이 보이도록
         btn.addEventListener('click', function () {
+          if (currentFilter === p) return;
           currentFilter = p;
+          selectedRows.clear();
+          updateSelectionBar();
           renderFilterBar();
-          render();
+          loadFeedbackList(1, 1);
         });
         bar.appendChild(btn);
       });
     }
 
     var currentPage = 1;
-    var hasMorePages = false;
-    var loadMoreBtn = document.getElementById('loadMoreBtn');
+    var totalPages = 1;
+    var serverProjects = [];
+    var pagerEl = document.getElementById('pager');
+    var PAGE_SIZE = 12;
+
+    // 이전 / 1 2 3 4 5 / 다음 형태의 페이지 번호를 그립니다(번호는 최대 5개씩).
+    function renderPager() {
+      pagerEl.innerHTML = '';
+      if (totalPages <= 1) { pagerEl.style.display = 'none'; return; }
+      pagerEl.style.display = 'flex';
+      function addBtn(label, page, opts) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        if (opts && opts.active) b.className = 'active';
+        if (opts && opts.disabled) b.disabled = true;
+        if (!(opts && (opts.active || opts.disabled))) {
+          b.addEventListener('click', function () { goToPage(page); });
+        }
+        pagerEl.appendChild(b);
+      }
+      var start = Math.max(1, currentPage - 2);
+      var end = Math.min(totalPages, start + 4);
+      start = Math.max(1, end - 4);
+      addBtn('이전', currentPage - 1, { disabled: currentPage <= 1 });
+      for (var n = start; n <= end; n++) addBtn(String(n), n, { active: n === currentPage });
+      addBtn('다음', currentPage + 1, { disabled: currentPage >= totalPages });
+    }
+
+    function goToPage(page) {
+      selectedRows.clear();
+      updateSelectionBar();
+      loadFeedbackList(page, 1);
+      window.scrollTo(0, 0);
+    }
 
     // page: 몇 번째 페이지를 불러올지. attempt: 이 페이지를 몇 번째로
     // 시도하는 중인지(실패 시 최대 3번 자동 재시도).
     function loadFeedbackList(page, attempt) {
-      if (page > 1) loadMoreBtn.textContent = '불러오는 중...';
-      loadMoreBtn.disabled = true;
+      pagerEl.style.opacity = '0.5';
+      pagerEl.style.pointerEvents = 'none';
 
-      api({ type: 'list', page: page, pageSize: 10 })
+      api({ type: 'list', page: page, pageSize: PAGE_SIZE, project: currentFilter === '전체' ? '' : currentFilter })
         .then(function (data) {
           if (handleUnauthorized(data)) return;
           // 서버가 오류로 답했으면 목록이 비어 있는 것으로 오해하지 않도록 재시도 흐름으로 보냅니다.
           if (data && data.ok === false) throw new Error(data.error || 'server error');
-          if (page === 1) {
-            allFeedback = data.items || [];
-          } else {
-            allFeedback = allFeedback.concat(data.items || []);
-          }
-          hasMorePages = !!data.hasMore;
-          currentPage = page;
+          allFeedback = data.items || [];
+          currentPage = data.page || page;
+          totalPages = data.totalPages || (data.hasMore ? currentPage + 1 : currentPage);
+          if (data.projects) serverProjects = data.projects;
+          else allFeedback.forEach(function (it) { if (serverProjects.indexOf(it.project) === -1) serverProjects.push(it.project); });
 
+          pagerEl.style.opacity = '';
+          pagerEl.style.pointerEvents = '';
           renderFilterBar();
           render();
-
-          loadMoreBtn.disabled = false;
-          loadMoreBtn.textContent = '더 보기';
-          loadMoreBtn.style.display = hasMorePages ? 'block' : 'none';
+          renderPager();
 
           // 첫 페이지를 성공적으로 불러왔으면, 전체 화면 로딩 표시를 걷어냅니다.
-          if (page === 1) {
-            document.getElementById('pageLoadingOverlay').style.display = 'none';
-          }
+          document.getElementById('pageLoadingOverlay').style.display = 'none';
         })
         .catch(function () {
           if (attempt < 3) {
-            if (page === 1) {
-              document.querySelector('#pageLoadingOverlay .loading-text').textContent =
-                '불러오는 중... (재시도 ' + attempt + '/3)';
-            }
+            document.querySelector('#pageLoadingOverlay .loading-text').textContent =
+              '불러오는 중... (재시도 ' + attempt + '/3)';
             setTimeout(function () {
               loadFeedbackList(page, attempt + 1);
             }, 800);
           } else {
-            if (page === 1) {
-              document.getElementById('pageLoadingOverlay').style.display = 'none';
-            }
+            document.getElementById('pageLoadingOverlay').style.display = 'none';
+            pagerEl.style.opacity = '';
+            pagerEl.style.pointerEvents = '';
             document.getElementById('empty').textContent =
               '데이터를 불러오지 못했습니다. 새로고침해 주세요.';
             document.getElementById('empty').style.display = 'block';
-            loadMoreBtn.disabled = false;
-            loadMoreBtn.textContent = '더 보기';
           }
         });
     }
-
-    loadMoreBtn.addEventListener('click', function () {
-      loadFeedbackList(currentPage + 1, 1);
-    });
 
     // 저장된 로그인 토큰이 있으면 바로 목록을 불러오고, 없으면 로그인 화면을 띄웁니다.
     startApp();
@@ -683,12 +717,10 @@
           btn.textContent = '선택 삭제';
           if (handleUnauthorized(data)) return;
           if (data && data.ok) {
-            // 화면에서도 지워진 항목들을 걸러내고 다시 그립니다(새로고침 없이 즉시 반영).
-            allFeedback = allFeedback.filter(function (item) { return !selectedRows.has(item.rowIndex); });
+            // 삭제하면 뒤 페이지 글이 앞으로 당겨지므로, 현재 페이지를 서버에서 다시 받아옵니다.
             selectedRows.clear();
             updateSelectionBar();
-            renderFilterBar();
-            render();
+            loadFeedbackList(currentPage, 1);
           } else {
             alert('삭제 실패: ' + (data && data.error ? data.error : '알 수 없는 오류'));
           }
